@@ -1,21 +1,15 @@
-from typing import Any, Type
+from typing import Any
 
 from .base import Distribution
 
 
-class TextDistribution(Distribution):
-    class ParameterHolder(Distribution.ParameterHolder):
-
-        @classmethod
-        def get_random_param_holder(cls) -> Distribution.ParameterHolder:
-            pass
-
-        def derivate_param_holder(self, distance: float) -> Distribution.ParameterHolder:
-            pass
-
+class WordDistribution(Distribution):
     @classmethod
-    def _get_param_holder_class(cls) -> Type[Distribution.ParameterHolder]:
+    def get_random_distribution(cls) -> Distribution:
         pass
 
     def generate_sample(self) -> Any:
+        pass
+
+    def generate_child(self, distance: float) -> Distribution:
         pass
