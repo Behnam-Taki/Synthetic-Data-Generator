@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Self
 
 import numpy as np
 
@@ -12,7 +12,7 @@ class CategoricalDistribution(Distribution):
         self._cdf = self.probabilities.cumsum()
 
     @classmethod
-    def get_random_distribution(cls, states: List[Any]) -> Distribution:
+    def get_random_distribution(cls, states: List[Any]) -> Self:
         return CategoricalDistribution(states, np.random.dirichlet(np.ones(len(states)), size=1))
 
     def generate_sample(self) -> Any:
@@ -20,5 +20,5 @@ class CategoricalDistribution(Distribution):
         index = np.searchsorted(self._cdf, r)
         return self.states[index]
 
-    def generate_child(self, distance: float) -> Distribution:
-        pass
+    def generate_child(self, distance: float) -> Self:
+        raise NotImplementedError()

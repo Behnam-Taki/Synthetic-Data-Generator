@@ -1,12 +1,12 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Any, Type
+from typing import Any, Self
 
 
 class Distribution(ABC):
     @classmethod
     @abstractmethod
-    def get_random_distribution(cls, *args, **kwargs) -> Distribution:
+    def get_random_distribution(cls, *args, **kwargs) -> Self:
         raise NotImplementedError()
 
     @abstractmethod
@@ -14,5 +14,5 @@ class Distribution(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def generate_child(self, distance: float) -> Distribution:
+    def generate_child(self, distance: float) -> Self:
         raise NotImplementedError()
