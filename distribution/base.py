@@ -19,12 +19,12 @@ class Distribution(ABC):
 
     @classmethod
     @abstractmethod
-    def get_param_holder_class(cls) -> Type[Distribution.ParameterHolder]:
+    def _get_param_holder_class(cls) -> Type[Distribution.ParameterHolder]:
         raise NotImplementedError()
 
     @classmethod
     def get_random_distribution(cls) -> Distribution:
-        return cls(cls.get_param_holder_class().get_random_param_holder())
+        return cls(cls._get_param_holder_class().get_random_param_holder())
 
     @abstractmethod
     def generate_sample(self) -> Any:
