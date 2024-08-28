@@ -6,7 +6,7 @@ from typing import Any, Type
 class Distribution(ABC):
     @classmethod
     @abstractmethod
-    def get_random_distribution(cls) -> Distribution:
+    def get_random_distribution(cls, *args, **kwargs) -> Distribution:
         raise NotImplementedError()
 
     @abstractmethod
