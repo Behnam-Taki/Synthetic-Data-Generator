@@ -1,8 +1,28 @@
+import math
 from typing import List, Any, Self
 
 import numpy as np
 
 from .base import Distribution
+
+
+class GaussianDistribution(Distribution):
+    def __init__(self, mean: float, variance: float):
+        self.mean = mean
+        self.variance = variance
+
+    @classmethod
+    def get_random_distribution(cls) -> Self:
+        return GaussianDistribution(
+            mean=np.random.normal(loc=0, scale=1),
+            variance=np.random.normal(loc=2, scale=1)
+        )
+
+    def generate_sample(self) -> Any:
+        return np.random.normal(loc=self.mean, scale=math.sqrt(self.variance))
+
+    def generate_child(self, distance: float) -> Self:
+        raise NotImplementedError()
 
 
 class CategoricalDistribution(Distribution):
