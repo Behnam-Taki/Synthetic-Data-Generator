@@ -13,7 +13,7 @@ class WordDistribution(Distribution):
         states = [chr(i+ord('a')) for i in range(26)] + ['$']
         return WordDistribution(character_markov_dist=MarkovDistribution.get_random_distribution(states=states))
 
-    def generate_sample(self) -> Any:
+    def generate_sample(self, *args, **kwargs) -> Any:
         char_sequence = self.character_markov_dist.generate_sample()
         return ''.join(char_sequence)
 

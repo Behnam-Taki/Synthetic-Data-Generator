@@ -18,7 +18,7 @@ class GaussianDistribution(Distribution):
             variance=np.random.normal(loc=2, scale=1)
         )
 
-    def generate_sample(self) -> Any:
+    def generate_sample(self, *args, **kwargs) -> Any:
         return np.random.normal(loc=self.mean, scale=math.sqrt(self.variance))
 
     def generate_child(self, distance: float) -> Self:
@@ -33,7 +33,7 @@ class PoissonDistribution(Distribution):
     def get_random_distribution(cls) -> Self:
         return PoissonDistribution(lam=np.random.gamma(shape=10, scale=0.5))
 
-    def generate_sample(self) -> Any:
+    def generate_sample(self, *args, **kwargs) -> Any:
         return np.random.poisson(lam=self.lam)
 
     def generate_child(self, distance: float) -> Self:
@@ -50,7 +50,7 @@ class CategoricalDistribution(Distribution):
     def get_random_distribution(cls, states: List[Any]) -> Self:
         return CategoricalDistribution(states, np.random.dirichlet(np.ones(len(states)), size=1))
 
-    def generate_sample(self) -> Any:
+    def generate_sample(self, *args, **kwargs) -> Any:
         r = np.random.uniform()
         index = np.searchsorted(self._cdf, r)
         return self.states[index]
@@ -88,7 +88,7 @@ class MarkovDistribution(Distribution):
             [CategoricalDistribution.get_random_distribution(indices_list) for _ in states]
         )
 
-    def generate_sample(self) -> List[Any]:
+    def generate_sample(self, *args, **kwargs) -> List[Any]:
         sample = []
         current_state_index = self.initial_distribution.generate_sample()
         while current_state_index != self.final_state_index:

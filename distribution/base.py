@@ -10,7 +10,7 @@ class Distribution(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def generate_sample(self) -> Any:
+    def generate_sample(self, *args, **kwargs) -> Any:
         raise NotImplementedError()
 
     @abstractmethod
