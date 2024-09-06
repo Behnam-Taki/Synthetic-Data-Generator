@@ -88,12 +88,22 @@ class MarkovDistribution(Distribution):
             [CategoricalDistribution.get_random_distribution(indices_list) for _ in states]
         )
 
-    def generate_sample(self, *args, **kwargs) -> List[Any]:
+    def _generate_next_state(self, current_state_index: int = None, allow_final=True):
+        next_state_distribution = (
+            self.transition_distributions[current_state_index] if current_state_index else
+            self.initial_distribution)
+        while True:
+            result = next_state_distribution.generate_sample()
+            if allow_final or result != self.final_state_index:
+                return result
+
+    def generate_sample(self, lenght: int = None) -> List[Any]:
         sample = []
-        current_state_index = self.initial_distribution.generate_sample()
-        while current_state_index != self.final_state_index:
+        allow_final = lenght is None
+        current_state_index = self._generate_next_state(allow_final=allow_final)
+        while current_state_index != self.final_state_index and (allow_final or len(sample) < lenght):
             sample.append(self.states[current_state_index])
-            current_state_index = self.transition_distributions[current_state_index].generate_sample()
+            current_state_index = self._generate_next_state(current_state_index, allow_final=allow_final)
         return sample
 
     def generate_child(self, distance: float) -> Self:
