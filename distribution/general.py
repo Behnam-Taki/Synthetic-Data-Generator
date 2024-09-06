@@ -25,6 +25,21 @@ class GaussianDistribution(Distribution):
         raise NotImplementedError()
 
 
+class PoissonDistribution(Distribution):
+    def __init__(self, lam: float):
+        self.lam = lam
+
+    @classmethod
+    def get_random_distribution(cls) -> Self:
+        return PoissonDistribution(lam=np.random.gamma(shape=10, scale=0.5))
+
+    def generate_sample(self) -> Any:
+        return np.random.poisson(lam=self.lam)
+
+    def generate_child(self, distance: float) -> Self:
+        raise NotImplementedError()
+
+
 class CategoricalDistribution(Distribution):
     def __init__(self, states: List[Any], probabilities: np.ndarray):
         self.states = states
