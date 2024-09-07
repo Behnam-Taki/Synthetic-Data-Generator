@@ -5,7 +5,9 @@ from .general import MarkovDistribution, PoissonDistribution, CategoricalDistrib
 
 
 class WordDistribution(Distribution):
-    def __init__(self, character_markov_dist: MarkovDistribution[str], length_dist: PoissonDistribution):
+    def __init__(self,
+                 character_markov_dist: MarkovDistribution[str],
+                 length_dist: PoissonDistribution):
         self.character_markov_dist = character_markov_dist
         self.length_dist = length_dist
 
@@ -63,6 +65,32 @@ class WordPosDistribution(Distribution, Generic[PosType]):
 
     def generate_sample(self, pos: PosType) -> str:
         return self.pos_word_dists[pos].generate_sample()
+
+    def generate_child(self, distance: float) -> Self:
+        pass
+
+
+class SentenceDistribution(Distribution, Generic[PosType]):
+    def __init__(self,
+                 wordpos_dist_distribution: CategoricalDistribution[WordPosDistribution[PosType]],
+                 pos_markov_dist: MarkovDistribution[PosType],
+                 length_dist: PoissonDistribution):
+        self.wordpos_dist_distribution = wordpos_dist_distribution
+        self.pos_markov_dist = pos_markov_dist
+        self.length_dist = length_dist
+
+    @classmethod
+    def get_random_distribution(cls, wordpos_dists: List[WordPosDistribution[PosType]]) -> Self:
+        pos_intersection = list(set.intersection(*[set(dist.pos_word_dists.keys()) for dist in wordpos_dists]))
+        return SentenceDistribution(
+            wordpos_dist_distribution=CategoricalDistribution.get_random_distribution(states=wordpos_dists),
+            pos_markov_dist=MarkovDistribution.get_random_distribution(states=pos_intersection),
+            length_dist=PoissonDistribution.get_random_distribution())
+
+    def generate_sample(self, *args, **kwargs) -> str:
+        pos_sequence = self.pos_markov_dist.generate_sample(lenght=self.length_dist.generate_sample() + 1)
+        word_sequence = [self.wordpos_dist_distribution.generate_sample().generate_sample(pos) for pos in pos_sequence]
+        return ' '.join(word_sequence) + '.'
 
     def generate_child(self, distance: float) -> Self:
         pass
