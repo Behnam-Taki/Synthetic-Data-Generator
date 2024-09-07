@@ -6,11 +6,11 @@ from typing import Any, Self
 class Distribution(ABC):
     @classmethod
     @abstractmethod
-    def get_random_distribution(cls, *args, **kwargs) -> Self:
+    def get_random_distribution(cls, **kwargs) -> Self:
         raise NotImplementedError()
 
     @abstractmethod
-    def generate_sample(self, *args, **kwargs) -> Any:
+    def generate_sample(self, **kwargs) -> Any:
         raise NotImplementedError()
 
     @abstractmethod

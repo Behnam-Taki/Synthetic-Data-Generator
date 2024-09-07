@@ -12,13 +12,13 @@ class GaussianDistribution(Distribution):
         self.variance = variance
 
     @classmethod
-    def get_random_distribution(cls) -> Self:
+    def get_random_distribution(cls, **kwargs) -> Self:
         return GaussianDistribution(
             mean=np.random.normal(loc=0, scale=1),
             variance=np.random.normal(loc=2, scale=1)
         )
 
-    def generate_sample(self, *args, **kwargs) -> float:
+    def generate_sample(self, **kwargs) -> float:
         return np.random.normal(loc=self.mean, scale=math.sqrt(self.variance))
 
     def generate_child(self, distance: float) -> Self:
@@ -30,10 +30,10 @@ class PoissonDistribution(Distribution):
         self.lam = lam
 
     @classmethod
-    def get_random_distribution(cls) -> Self:
+    def get_random_distribution(cls, **kwargs) -> Self:
         return PoissonDistribution(lam=np.random.gamma(shape=10, scale=0.5))
 
-    def generate_sample(self, *args, **kwargs) -> int:
+    def generate_sample(self, **kwargs) -> int:
         return np.random.poisson(lam=self.lam)
 
     def generate_child(self, distance: float) -> Self:
@@ -50,10 +50,10 @@ class CategoricalDistribution(Distribution, Generic[CategoryType]):
         self._cdf = self.probabilities.cumsum()
 
     @classmethod
-    def get_random_distribution(cls, states: List[CategoryType]) -> Self:
+    def get_random_distribution(cls, states: List[CategoryType], **kwargs) -> Self:
         return CategoricalDistribution(states, np.random.dirichlet(np.ones(len(states)), size=1))
 
-    def generate_sample(self, *args, **kwargs) -> CategoryType:
+    def generate_sample(self, **kwargs) -> CategoryType:
         r = np.random.uniform()
         index = np.searchsorted(self._cdf, r)
         return self.states[index]
@@ -84,7 +84,7 @@ class MarkovDistribution(Distribution, Generic[StateType]):
         self.final_state_index = final_state_index if final_state_index is not None else len(states) - 1
 
     @classmethod
-    def get_random_distribution(cls, states: List[StateType], final_state_index=None) -> Self:
+    def get_random_distribution(cls, states: List[StateType], final_state_index=None, **kwargs) -> Self:
         indices_list = list(range(len(states)))
         initialable_indices_list = indices_list.copy()
         initialable_indices_list.pop(final_state_index if final_state_index is not None else -1)
@@ -103,7 +103,7 @@ class MarkovDistribution(Distribution, Generic[StateType]):
             if allow_final or result != self.final_state_index:
                 return result
 
-    def generate_sample(self, lenght: int = None) -> List[StateType]:
+    def generate_sample(self, lenght: int = None, **kwargs) -> List[StateType]:
         sample = []
         allow_final = lenght is None
         current_state_index = self._generate_next_state(allow_final=allow_final)
@@ -113,4 +113,4 @@ class MarkovDistribution(Distribution, Generic[StateType]):
         return sample
 
     def generate_child(self, distance: float) -> Self:
-        pass
+        raise NotImplementedError()

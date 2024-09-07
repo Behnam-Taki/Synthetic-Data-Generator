@@ -12,17 +12,17 @@ class WordDistribution(Distribution):
         self.length_dist = length_dist
 
     @classmethod
-    def get_random_distribution(cls, *args, **kwargs) -> Self:
+    def get_random_distribution(cls, **kwargs) -> Self:
         states = [chr(i + ord('a')) for i in range(26)] + ['$']
         return WordDistribution(character_markov_dist=MarkovDistribution.get_random_distribution(states=states),
                                 length_dist=PoissonDistribution.get_random_distribution())
 
-    def generate_sample(self, *args, **kwargs) -> str:
+    def generate_sample(self, **kwargs) -> str:
         char_sequence = self.character_markov_dist.generate_sample(lenght=self.length_dist.generate_sample() + 1)
         return ''.join(char_sequence)
 
     def generate_child(self, distance: float) -> Self:
-        pass
+        raise NotImplementedError()
 
 
 PosType = TypeVar('PosType')
@@ -55,7 +55,7 @@ class WordPosDistribution(Distribution, Generic[PosType]):
         }
 
     @classmethod
-    def get_random_distribution(cls, pos_list: List[PosType], wordset_size=None) -> Self:
+    def get_random_distribution(cls, pos_list: List[PosType], wordset_size=None, **kwargs) -> Self:
         wordset_size: int = wordset_size or PoissonDistribution(500).generate_sample()
         return WordPosDistribution(
             word_distribution=WordDistribution.get_random_distribution(),
@@ -63,11 +63,11 @@ class WordPosDistribution(Distribution, Generic[PosType]):
             wordset_size=wordset_size
         )
 
-    def generate_sample(self, pos: PosType) -> str:
+    def generate_sample(self, pos: PosType, **kwargs) -> str:
         return self.pos_word_dists[pos].generate_sample()
 
     def generate_child(self, distance: float) -> Self:
-        pass
+        raise NotImplementedError()
 
 
 class SentenceDistribution(Distribution, Generic[PosType]):
@@ -80,17 +80,17 @@ class SentenceDistribution(Distribution, Generic[PosType]):
         self.length_dist = length_dist
 
     @classmethod
-    def get_random_distribution(cls, wordpos_dists: List[WordPosDistribution[PosType]]) -> Self:
+    def get_random_distribution(cls, wordpos_dists: List[WordPosDistribution[PosType]], **kwargs) -> Self:
         pos_intersection = list(set.intersection(*[set(dist.pos_word_dists.keys()) for dist in wordpos_dists]))
         return SentenceDistribution(
             wordpos_dist_distribution=CategoricalDistribution.get_random_distribution(states=wordpos_dists),
             pos_markov_dist=MarkovDistribution.get_random_distribution(states=pos_intersection),
             length_dist=PoissonDistribution.get_random_distribution())
 
-    def generate_sample(self, *args, **kwargs) -> str:
+    def generate_sample(self, **kwargs) -> str:
         pos_sequence = self.pos_markov_dist.generate_sample(lenght=self.length_dist.generate_sample() + 1)
         word_sequence = [self.wordpos_dist_distribution.generate_sample().generate_sample(pos) for pos in pos_sequence]
         return ' '.join(word_sequence) + '.'
 
     def generate_child(self, distance: float) -> Self:
-        pass
+        raise NotImplementedError()
