@@ -1,4 +1,5 @@
-from typing import Self, Dict, List, TypeVar, Generic, Set
+from abc import ABC
+from typing import Self, Dict, List, TypeVar, Generic, Set, Type
 
 from .base import Distribution
 from .general import MarkovDistribution, PoissonDistribution, CategoricalDistribution
@@ -93,4 +94,35 @@ class SentenceDistribution(Distribution, Generic[PosType]):
         return ' '.join(word_sequence) + '.'
 
     def generate_child(self, distance: float) -> Self:
+        raise NotImplementedError()
+
+
+TextDistributionType = TypeVar('TextDistributionType')
+
+
+class IidConcatenatedTextDistribution(Distribution, Generic[TextDistributionType], ABC):
+    text_distribution_type: Type[TextDistributionType]
+    text_splitter: str
+
+    def __init__(self,
+                 text_distribution: Distribution,
+                 length_dist: PoissonDistribution
+                 ):
+        self.text_distribution = text_distribution
+        self.length_dist = length_dist
+
+    @classmethod
+    def get_random_distribution(cls, **kwargs) -> Self:
+        return cls(
+            text_distribution=cls.text_distribution_type.get_random_distribution(**kwargs),
+            length_dist=PoissonDistribution.get_random_distribution()
+        )
+
+    def generate_sample(self, **kwargs) -> str:
+        text_count = self.length_dist.generate_sample() + 1
+        texts = [self.text_distribution.generate_sample() for _ in range(text_count)]
+        return self.text_splitter.join(texts)
+
+    def generate_child(self, distance: float) -> Self:
+        pass
         raise NotImplementedError()
