@@ -126,3 +126,8 @@ class IidConcatenatedTextDistribution(Distribution, Generic[TextDistributionType
     def generate_child(self, distance: float) -> Self:
         pass
         raise NotImplementedError()
+
+
+class ParagraphDistribution(IidConcatenatedTextDistribution[SentenceDistribution]):
+    text_distribution_type = SentenceDistribution
+    text_splitter = ' '
