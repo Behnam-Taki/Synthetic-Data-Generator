@@ -131,3 +131,8 @@ class IidConcatenatedTextDistribution(Distribution, Generic[TextDistributionType
 class ParagraphDistribution(IidConcatenatedTextDistribution[SentenceDistribution]):
     text_distribution_type = SentenceDistribution
     text_splitter = ' '
+
+
+class TextDistribution(IidConcatenatedTextDistribution[ParagraphDistribution]):
+    text_distribution_type = ParagraphDistribution
+    text_splitter = '\n'
