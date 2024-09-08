@@ -1,6 +1,7 @@
 from abc import ABC
 from typing import Self, Dict, List, TypeVar, Generic, Set, Type
 
+from utilities import to_sub_description
 from .base import Distribution
 from .general import MarkovDistribution, PoissonDistribution, CategoricalDistribution
 
@@ -26,8 +27,8 @@ class WordDistribution(Distribution):
         raise NotImplementedError()
 
     def describe(self) -> str:
-        return f'Charachter Count Distribution:{self._to_sub_description(self.length_dist.describe())}\n' \
-               f'Character Distribution:{self._to_sub_description(self.character_markov_dist.describe())}'
+        return f'Charachter Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
+               f'Character Distribution:{to_sub_description(self.character_markov_dist.describe())}'
 
 
 PosType = TypeVar('PosType')
@@ -75,10 +76,10 @@ class WordPosDistribution(Distribution, Generic[PosType]):
         raise NotImplementedError()
 
     def describe(self) -> str:
-        pos_dists = '\n'.join([f'{pos}:{self._to_sub_description(dist.describe())}'
+        pos_dists = '\n'.join([f'{pos}:{to_sub_description(dist.describe())}'
                                for pos, dist in self.pos_word_dists.items()])
-        return f'Word Distribution:{self._to_sub_description(self.word_distribution.describe())}\n' \
-               f'Word-Pos Distribution:{self._to_sub_description(pos_dists)}'
+        return f'Word Distribution:{to_sub_description(self.word_distribution.describe())}\n' \
+               f'Word-Pos Distribution:{to_sub_description(pos_dists)}'
 
 
 class SentenceDistribution(Distribution, Generic[PosType]):
@@ -107,9 +108,9 @@ class SentenceDistribution(Distribution, Generic[PosType]):
         raise NotImplementedError()
 
     def describe(self) -> str:
-        return f'Word Count Distribution:{self._to_sub_description(self.length_dist.describe())}\n' \
-               f'Word-Pos Choose Distribution:{self._to_sub_description(self.wordpos_dist_distribution.describe())}\n' \
-               f'Pos Distribution:{self._to_sub_description(self.pos_markov_dist.describe())}'
+        return f'Word Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
+               f'Word-Pos Choose Distribution:{to_sub_description(self.wordpos_dist_distribution.describe())}\n' \
+               f'Pos Distribution:{to_sub_description(self.pos_markov_dist.describe())}'
 
 
 TextDistributionType = TypeVar('TextDistributionType')
@@ -139,7 +140,6 @@ class IidConcatenatedTextDistribution(Distribution, Generic[TextDistributionType
         return self.text_splitter.join(texts)
 
     def generate_child(self, distance: float) -> Self:
-        pass
         raise NotImplementedError()
 
 
@@ -148,8 +148,8 @@ class ParagraphDistribution(IidConcatenatedTextDistribution[SentenceDistribution
     text_splitter = ' '
 
     def describe(self) -> str:
-        return f'Sentence Count Distribution:{self._to_sub_description(self.length_dist.describe())}\n' \
-               f'Sentence Distribution:{self._to_sub_description(self.text_distribution.describe())}'
+        return f'Sentence Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
+               f'Sentence Distribution:{to_sub_description(self.text_distribution.describe())}'
 
 
 class TextDistribution(IidConcatenatedTextDistribution[ParagraphDistribution]):
@@ -157,5 +157,5 @@ class TextDistribution(IidConcatenatedTextDistribution[ParagraphDistribution]):
     text_splitter = '\n'
 
     def describe(self) -> str:
-        return f'Paragraph Count Distribution:{self._to_sub_description(self.length_dist.describe())}\n' \
-               f'Paragraph Distribution:{self._to_sub_description(self.text_distribution.describe())}'
+        return f'Paragraph Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
+               f'Paragraph Distribution:{to_sub_description(self.text_distribution.describe())}'

@@ -4,6 +4,7 @@ from tabulate import tabulate
 
 import numpy as np
 
+from utilities import to_sub_description
 from .base import Distribution
 
 
@@ -80,7 +81,7 @@ class CategoricalDistribution(Distribution, Generic[CategoryType]):
             state_probs[l + line_count * c] for c in range(col_count) if l + line_count * c < len(state_probs)]
             for l in range(line_count)
         ], tablefmt="plain")
-        return f'Categorical{self._to_sub_description(state_probs_str, format_for_one_line=True)}'
+        return f'Categorical{to_sub_description(state_probs_str, format_for_one_line=True)}'
 
 
 StateType = TypeVar('StateType')
@@ -141,4 +142,4 @@ class MarkovDistribution(Distribution, Generic[StateType]):
                              [[self.states[i]] + [100 * p for p in self.transition_distributions[i].probabilities]
                               for i in range(len(self.states))],
                              headers=[''] + self.states, floatfmt='4.1f')
-        return f'Markov{self._to_sub_description(trans_mat)}'
+        return f'Markov{to_sub_description(trans_mat)}'
