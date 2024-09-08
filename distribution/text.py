@@ -156,6 +156,17 @@ class TextDistribution(IidConcatenatedTextDistribution[ParagraphDistribution]):
     text_distribution_type = ParagraphDistribution
     text_splitter = '\n'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.children: List[Self] = []
+
+    def generate_child(self, *args, **kwargs) -> Self:
+        result = super(TextDistribution, self).generate_child(*args, **kwargs)
+        self.children.append(result)
+        return result
+
     def describe(self) -> str:
         return f'Paragraph Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
-               f'Paragraph Distribution:{to_sub_description(self.text_distribution.describe())}'
+               f'Paragraph Distribution:{to_sub_description(self.text_distribution.describe())}' + \
+               ''.join([f'\nChild #{i}: {to_sub_description(self.children[i].describe())}'
+                        for i in range(len(self.children))])
