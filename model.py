@@ -1,3 +1,4 @@
+from __future__ import annotations
 import pickle
 from typing import List, Self
 
@@ -29,7 +30,7 @@ class SyntheticGeneratorModel:
             pickle.dump(self, f)
 
     @classmethod
-    def load(cls, path: str = default_file_name) -> Self:
+    def load(cls, path: str = default_file_name) -> SyntheticGeneratorModel:
         with open(path, 'rb') as f:
             return pickle.load(f)
 
