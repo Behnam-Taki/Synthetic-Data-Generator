@@ -73,7 +73,7 @@ class CategoricalDistribution(Distribution, Generic[CategoryType]):
         col_count = 10
         states_tuples = [(self.states[i], self.probabilities[i]) for i in range(len(self.states))] \
             if type(self.states[0]).__str__ is not object.__str__ else \
-            [(f'{type(self.states[0]).__name__} #{i}', self.probabilities[i]) for i in range(len(self.states))]
+            [(f'{type(self.states[0]).__name__} #{i + 1}', self.probabilities[i]) for i in range(len(self.states))]
         states_tuples.sort(key=lambda x: len(x[0]))
         state_probs = [f'{state}: {prob:.3%}' for state, prob in states_tuples]
         line_count = math.ceil(len(state_probs) / col_count)
