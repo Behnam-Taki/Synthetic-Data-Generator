@@ -1,5 +1,6 @@
 import math
 from typing import List, Self, TypeVar, Generic
+from tabulate import tabulate
 
 import numpy as np
 
@@ -24,6 +25,9 @@ class GaussianDistribution(Distribution):
     def generate_child(self, distance: float) -> Self:
         raise NotImplementedError()
 
+    def describe(self) -> str:
+        return f'Gaussian({self.mean:.3f}, {self.variance:.3f})'
+
 
 class PoissonDistribution(Distribution):
     def __init__(self, lam: float):
@@ -39,6 +43,9 @@ class PoissonDistribution(Distribution):
     def generate_child(self, distance: float) -> Self:
         raise NotImplementedError()
 
+    def describe(self) -> str:
+        return f'Poisson({self.lam:.3f})'
+
 
 CategoryType = TypeVar('CategoryType')
 
@@ -51,7 +58,7 @@ class CategoricalDistribution(Distribution, Generic[CategoryType]):
 
     @classmethod
     def get_random_distribution(cls, states: List[CategoryType], **kwargs) -> Self:
-        return CategoricalDistribution(states, np.random.dirichlet(np.ones(len(states)), size=1))
+        return CategoricalDistribution(states, np.random.dirichlet(np.ones(len(states))))
 
     def generate_sample(self, **kwargs) -> CategoryType:
         r = np.random.uniform()
@@ -60,6 +67,20 @@ class CategoricalDistribution(Distribution, Generic[CategoryType]):
 
     def generate_child(self, distance: float) -> Self:
         raise NotImplementedError()
+
+    def describe(self) -> str:
+        col_count = 10
+        states_tuples = [(self.states[i], self.probabilities[i]) for i in range(len(self.states))] \
+            if type(self.states[0]).__str__ is not object.__str__ else \
+            [(f'{type(self.states[0]).__name__} #{i}', self.probabilities[i]) for i in range(len(self.states))]
+        states_tuples.sort(key=lambda x: len(x[0]))
+        state_probs = [f'{state}: {prob:.3%}' for state, prob in states_tuples]
+        line_count = math.ceil(len(state_probs) / col_count)
+        state_probs_str = tabulate([[
+            state_probs[l + line_count * c] for c in range(col_count) if l + line_count * c < len(state_probs)]
+            for l in range(line_count)
+        ], tablefmt="plain")
+        return f'Categorical{self._to_sub_description(state_probs_str, format_for_one_line=True)}'
 
 
 StateType = TypeVar('StateType')
@@ -114,3 +135,10 @@ class MarkovDistribution(Distribution, Generic[StateType]):
 
     def generate_child(self, distance: float) -> Self:
         raise NotImplementedError()
+
+    def describe(self) -> str:
+        trans_mat = tabulate([['-->'] + [100 * p for p in self.initial_distribution.probabilities]] +
+                             [[self.states[i]] + [100 * p for p in self.transition_distributions[i].probabilities]
+                              for i in range(len(self.states))],
+                             headers=[''] + self.states, floatfmt='4.1f')
+        return f'Markov{self._to_sub_description(trans_mat)}'

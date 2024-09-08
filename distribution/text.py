@@ -25,6 +25,10 @@ class WordDistribution(Distribution):
     def generate_child(self, distance: float) -> Self:
         raise NotImplementedError()
 
+    def describe(self) -> str:
+        return f'Charachter Count Distribution:{self._to_sub_description(self.length_dist.describe())}\n' \
+               f'Character Distribution:{self._to_sub_description(self.character_markov_dist.describe())}'
+
 
 PosType = TypeVar('PosType')
 
@@ -70,6 +74,12 @@ class WordPosDistribution(Distribution, Generic[PosType]):
     def generate_child(self, distance: float) -> Self:
         raise NotImplementedError()
 
+    def describe(self) -> str:
+        pos_dists = '\n'.join([f'{pos}:{self._to_sub_description(dist.describe())}'
+                               for pos, dist in self.pos_word_dists.items()])
+        return f'Word Distribution:{self._to_sub_description(self.word_distribution.describe())}\n' \
+               f'Word-Pos Distribution:{self._to_sub_description(pos_dists)}'
+
 
 class SentenceDistribution(Distribution, Generic[PosType]):
     def __init__(self,
@@ -85,7 +95,7 @@ class SentenceDistribution(Distribution, Generic[PosType]):
         pos_intersection = list(set.intersection(*[set(dist.pos_word_dists.keys()) for dist in wordpos_dists]))
         return SentenceDistribution(
             wordpos_dist_distribution=CategoricalDistribution.get_random_distribution(states=wordpos_dists),
-            pos_markov_dist=MarkovDistribution.get_random_distribution(states=pos_intersection),
+            pos_markov_dist=MarkovDistribution.get_random_distribution(states=pos_intersection + ['$']),
             length_dist=PoissonDistribution.get_random_distribution())
 
     def generate_sample(self, **kwargs) -> str:
@@ -95,6 +105,11 @@ class SentenceDistribution(Distribution, Generic[PosType]):
 
     def generate_child(self, distance: float) -> Self:
         raise NotImplementedError()
+
+    def describe(self) -> str:
+        return f'Word Count Distribution:{self._to_sub_description(self.length_dist.describe())}\n' \
+               f'Word-Pos Choose Distribution:{self._to_sub_description(self.wordpos_dist_distribution.describe())}\n' \
+               f'Pos Distribution:{self._to_sub_description(self.pos_markov_dist.describe())}'
 
 
 TextDistributionType = TypeVar('TextDistributionType')
@@ -132,7 +147,15 @@ class ParagraphDistribution(IidConcatenatedTextDistribution[SentenceDistribution
     text_distribution_type = SentenceDistribution
     text_splitter = ' '
 
+    def describe(self) -> str:
+        return f'Sentence Count Distribution:{self._to_sub_description(self.length_dist.describe())}\n' \
+               f'Sentence Distribution:{self._to_sub_description(self.text_distribution.describe())}'
+
 
 class TextDistribution(IidConcatenatedTextDistribution[ParagraphDistribution]):
     text_distribution_type = ParagraphDistribution
     text_splitter = '\n'
+
+    def describe(self) -> str:
+        return f'Paragraph Count Distribution:{self._to_sub_description(self.length_dist.describe())}\n' \
+               f'Paragraph Distribution:{self._to_sub_description(self.text_distribution.describe())}'
