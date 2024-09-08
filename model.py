@@ -1,3 +1,4 @@
+import pickle
 from typing import List, Self
 
 from distribution.text import WordPosDistribution, TextDistribution
@@ -5,6 +6,8 @@ from utilities import to_sub_description
 
 
 class SyntheticGeneratorModel:
+    default_file_name = 'synthetic_generator.model'
+
     def __init__(self, pos_list: List[str], pos_word_dist_count: int):
         self.pos_list = pos_list
         self.pos_word_dist_count = pos_word_dist_count
@@ -21,9 +24,12 @@ class SyntheticGeneratorModel:
         return f'Word-Pos Distributions:{to_sub_description(wordpos_dists)}\n' \
                f'Root Text Distribution:{to_sub_description(self.root_text_distribution.describe())}'
 
-    def save(self, path: str):
-        pass
+    def save(self, path: str = default_file_name):
+        with open(path, 'wb') as f:
+            pickle.dump(self, f)
 
     @classmethod
-    def load(cls, path: str) -> Self:
-        pass
+    def load(cls, path: str = default_file_name) -> Self:
+        with open(path, 'rb') as f:
+            return pickle.load(f)
+
