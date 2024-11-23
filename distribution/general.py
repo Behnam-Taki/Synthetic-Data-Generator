@@ -1,10 +1,11 @@
 import math
+import random
 from typing import List, Self, TypeVar, Generic
 from tabulate import tabulate
 
 import numpy as np
 
-from utilities import to_sub_description
+from utilities import to_sub_description, bin_search_on_answer
 from .base import Distribution
 
 
@@ -42,7 +43,19 @@ class PoissonDistribution(Distribution):
         return np.random.poisson(lam=self.lam)
 
     def generate_child(self, distance: float) -> Self:
-        raise NotImplementedError()
+        distance_calculator = lambda lam: lam - self.lam + self.lam * math.log(self.lam / lam)
+        first_range_start, sec_range_end = self.lam, self.lam
+        while distance_calculator(first_range_start) < distance:
+            first_range_start /= 2
+        while distance_calculator(sec_range_end) < distance:
+            sec_range_end *= 2
+        start = bin_search_on_answer(distance_calculator, distance, first_range_start, self.lam)
+        end = bin_search_on_answer(distance_calculator, distance, self.lam, sec_range_end)
+        print(start, end)
+        lam = random.uniform(start, end)
+        print(lam)
+        return PoissonDistribution(lam)
+
 
     def describe(self) -> str:
         return f'Poisson({self.lam:.3f})'
