@@ -25,7 +25,39 @@ class GaussianDistribution(Distribution):
         return np.random.normal(loc=self.mean, scale=math.sqrt(self.variance))
 
     def generate_child(self, distance: float) -> Self:
-        raise NotImplementedError()
+        distance_with_same_mean_calculator = lambda var_ratio: 0.5 * math.log(var_ratio) + 0.5 / var_ratio - 0.5
+
+        max_var_ratio_range_end = 1
+        while distance_with_same_mean_calculator(max_var_ratio_range_end) < distance:
+            max_var_ratio_range_end *= 2
+        max_var_ratio_range_start = max_var_ratio_range_end / 2
+        max_var_ratio = bin_search_on_answer(distance_with_same_mean_calculator, distance, max_var_ratio_range_start, max_var_ratio_range_end)
+        max_var = max_var_ratio * self.variance
+
+        # min_var_ratio_range_start = 1
+        # while distance_with_same_mean_calculator(min_var_ratio_range_start) < distance:
+        #     min_var_ratio_range_start /= 2
+        # min_var_ratio_range_end = min_var_ratio_range_start / 2
+        # min_var_ratio = bin_search_on_answer(distance_with_same_mean_calculator, distance, min_var_ratio_range_start, min_var_ratio_range_end) + 1e-3
+        # min_var = min_var_ratio * self.variance
+
+        min_var = 0
+        mu_calculator = lambda var: self.mean + math.sqrt(2 * var * (distance + 0.5 - 0.5 * math.log(var/self.variance) - 0.5 * self.variance / var))
+        parts_num = 1000
+        epsilon = (max_var - min_var) / 1000
+        part_lenghts: np.ndarray = np.zeros(parts_num)
+        for part in range(parts_num):
+            try:
+                part_lenght = math.sqrt(epsilon ** 2 + (mu_calculator(min_var + part * epsilon) - mu_calculator(min_var + (part + 1) * epsilon)) ** 2)
+            except:
+                part_lenght = 0
+            part_lenghts[part] = part_lenght
+        var_dist = CategoricalDistribution(list(range(parts_num)), part_lenghts / sum(part_lenghts))
+        selected_var_part = var_dist.generate_sample()
+        selected_var = random.uniform(min_var + selected_var_part * epsilon, min_var + (selected_var_part + 1) * epsilon)
+        positive_selected_mu = mu_calculator(selected_var)
+        selected_mu = random.choice([positive_selected_mu, 2 * self.mean-positive_selected_mu])
+        return GaussianDistribution(selected_mu, selected_var)
 
     def describe(self) -> str:
         return f'Gaussian({self.mean:.3f}, {self.variance:.3f})'
