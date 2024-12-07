@@ -52,10 +52,9 @@ class PoissonDistribution(Distribution):
         start = bin_search_on_answer(distance_calculator, distance, first_range_start, self.lam)
         end = bin_search_on_answer(distance_calculator, distance, self.lam, sec_range_end)
         print(start, end)
-        lam = random.uniform(start, end)
+        lam = random.choice([start, end])
         print(lam)
         return PoissonDistribution(lam)
-
 
     def describe(self) -> str:
         return f'Poisson({self.lam:.3f})'
