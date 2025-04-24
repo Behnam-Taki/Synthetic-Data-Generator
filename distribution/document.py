@@ -152,7 +152,7 @@ class ParagraphDistribution(IidConcatenatedTextDistribution[SentenceDistribution
                f'Sentence Distribution:{to_sub_description(self.text_distribution.describe())}'
 
 
-class TextDistribution(IidConcatenatedTextDistribution[ParagraphDistribution]):
+class DocumentDistribution(IidConcatenatedTextDistribution[ParagraphDistribution]):
     text_distribution_type = ParagraphDistribution
     text_splitter = '\n'
 
@@ -161,7 +161,7 @@ class TextDistribution(IidConcatenatedTextDistribution[ParagraphDistribution]):
         self.children: List[Self] = []
 
     def derivate(self, *args, **kwargs) -> Self:
-        result = super(TextDistribution, self).derivate(*args, **kwargs)
+        result = super(DocumentDistribution, self).derivate(*args, **kwargs)
         self.children.append(result)
         return result
 

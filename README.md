@@ -14,5 +14,5 @@ loaded_model = SyntheticGeneratorModel.load()
 print(loaded_model.describe())
 print('\n\n\n\n')
 for _ in range(10):
-    print(loaded_model.root_text_distribution.generate_sample(), end='\n\n')
+    print(loaded_model.root_document_distribution.generate_sample(), end='\n\n')
 ```
