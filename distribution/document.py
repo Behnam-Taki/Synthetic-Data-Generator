@@ -146,21 +146,10 @@ class IidConcatenatedTextDistribution(Distribution, Generic[TextDistributionType
         )
         return result
 
-    @abstractmethod
-    def get_scale_multipliers(self) -> Tuple[float, float]:
-        """
-        :return: Two floats, first for subtext derivation and second for lenght derivation
-        """
-        raise NotImplementedError()
-
 
 class ParagraphDistribution(IidConcatenatedTextDistribution[SentenceDistribution]):
     text_distribution_type = SentenceDistribution
     text_splitter = ' '
-
-    def get_scale_multipliers(self) -> Tuple[float, float]:
-        # TODO find the suitable amounts and replace
-        return 1, 1
 
     def describe(self) -> str:
         return f'Sentence Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
@@ -179,10 +168,6 @@ class DocumentDistribution(IidConcatenatedTextDistribution[ParagraphDistribution
         result = super(DocumentDistribution, self).derivate(*args, **kwargs)
         self.children.append(result)
         return result
-
-    def get_scale_multipliers(self) -> Tuple[float, float]:
-        # TODO find the suitable amounts and replace
-        return 1, 1
 
     def describe(self) -> str:
         return f'Paragraph Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
