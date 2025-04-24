@@ -24,14 +24,16 @@ class GaussianDistribution(Distribution):
     def generate_sample(self, **kwargs) -> float:
         return np.random.normal(loc=self.mean, scale=math.sqrt(self.variance))
 
-    def generate_child(self, distance: float) -> Self:
+    def derivate(self, distance_scale: float) -> Self:
+        if distance_scale == 0:
+            return GaussianDistribution(self.mean, self.variance)
         distance_with_same_mean_calculator = lambda var_ratio: 0.5 * math.log(var_ratio) + 0.5 / var_ratio - 0.5
 
         max_var_ratio_range_end = 1
-        while distance_with_same_mean_calculator(max_var_ratio_range_end) < distance:
+        while distance_with_same_mean_calculator(max_var_ratio_range_end) < distance_scale:
             max_var_ratio_range_end *= 2
         max_var_ratio_range_start = max_var_ratio_range_end / 2
-        max_var_ratio = bin_search_on_answer(distance_with_same_mean_calculator, distance, max_var_ratio_range_start, max_var_ratio_range_end)
+        max_var_ratio = bin_search_on_answer(distance_with_same_mean_calculator, distance_scale, max_var_ratio_range_start, max_var_ratio_range_end)
         max_var = max_var_ratio * self.variance
 
         # min_var_ratio_range_start = 1
@@ -42,7 +44,7 @@ class GaussianDistribution(Distribution):
         # min_var = min_var_ratio * self.variance
 
         min_var = 0
-        mu_calculator = lambda var: self.mean + math.sqrt(2 * var * (distance + 0.5 - 0.5 * math.log(var/self.variance) - 0.5 * self.variance / var))
+        mu_calculator = lambda var: self.mean + math.sqrt(2 * var * (distance_scale + 0.5 - 0.5 * math.log(var / self.variance) - 0.5 * self.variance / var))
         parts_num = 1000
         epsilon = (max_var - min_var) / 1000
         part_lenghts: np.ndarray = np.zeros(parts_num)
@@ -74,18 +76,16 @@ class PoissonDistribution(Distribution):
     def generate_sample(self, **kwargs) -> int:
         return np.random.poisson(lam=self.lam)
 
-    def generate_child(self, distance: float) -> Self:
+    def derivate(self, distance_scale: float) -> Self:
         distance_calculator = lambda lam: lam - self.lam + self.lam * math.log(self.lam / lam)
         first_range_start, sec_range_end = self.lam, self.lam
-        while distance_calculator(first_range_start) < distance:
+        while distance_calculator(first_range_start) < distance_scale:
             first_range_start /= 2
-        while distance_calculator(sec_range_end) < distance:
+        while distance_calculator(sec_range_end) < distance_scale:
             sec_range_end *= 2
-        start = bin_search_on_answer(distance_calculator, distance, first_range_start, self.lam)
-        end = bin_search_on_answer(distance_calculator, distance, self.lam, sec_range_end)
-        print(start, end)
+        start = bin_search_on_answer(distance_calculator, distance_scale, first_range_start, self.lam)
+        end = bin_search_on_answer(distance_calculator, distance_scale, self.lam, sec_range_end)
         lam = random.choice([start, end])
-        print(lam)
         return PoissonDistribution(lam)
 
     def describe(self) -> str:
@@ -110,7 +110,7 @@ class CategoricalDistribution(Distribution, Generic[CategoryType]):
         index = np.searchsorted(self._cdf, r)
         return self.states[index]
 
-    def generate_child(self, distance: float) -> Self:
+    def derivate(self, distance_scale: float) -> Self:
         raise NotImplementedError()
 
     def describe(self) -> str:
@@ -178,7 +178,7 @@ class MarkovDistribution(Distribution, Generic[StateType]):
             current_state_index = self._generate_next_state(current_state_index, allow_final=allow_final)
         return sample
 
-    def generate_child(self, distance: float) -> Self:
+    def derivate(self, distance_scale: float) -> Self:
         raise NotImplementedError()
 
     def describe(self) -> str:

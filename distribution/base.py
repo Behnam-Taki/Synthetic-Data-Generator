@@ -14,7 +14,7 @@ class Distribution(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def generate_child(self, distance: float) -> Self:
+    def derivate(self, distance_scale: float) -> Self:
         raise NotImplementedError()
 
     @abstractmethod

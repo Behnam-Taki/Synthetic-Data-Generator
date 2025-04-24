@@ -23,7 +23,7 @@ class WordDistribution(Distribution):
         char_sequence = self.character_markov_dist.generate_sample(lenght=self.length_dist.generate_sample() + 1)
         return ''.join(char_sequence)
 
-    def generate_child(self, distance: float) -> Self:
+    def derivate(self, distance_scale: float) -> Self:
         raise NotImplementedError()
 
     def describe(self) -> str:
@@ -72,7 +72,7 @@ class WordPosDistribution(Distribution, Generic[PosType]):
     def generate_sample(self, pos: PosType, **kwargs) -> str:
         return self.pos_word_dists[pos].generate_sample()
 
-    def generate_child(self, distance: float) -> Self:
+    def derivate(self, distance_scale: float) -> Self:
         raise NotImplementedError()
 
     def describe(self) -> str:
@@ -104,7 +104,7 @@ class SentenceDistribution(Distribution, Generic[PosType]):
         word_sequence = [self.wordpos_dist_distribution.generate_sample().generate_sample(pos) for pos in pos_sequence]
         return ' '.join(word_sequence) + '.'
 
-    def generate_child(self, distance: float) -> Self:
+    def derivate(self, distance_scale: float) -> Self:
         raise NotImplementedError()
 
     def describe(self) -> str:
@@ -139,7 +139,7 @@ class IidConcatenatedTextDistribution(Distribution, Generic[TextDistributionType
         texts = [self.text_distribution.generate_sample() for _ in range(text_count)]
         return self.text_splitter.join(texts)
 
-    def generate_child(self, distance: float) -> Self:
+    def derivate(self, distance_scale: float) -> Self:
         raise NotImplementedError()
 
 
@@ -160,13 +160,13 @@ class TextDistribution(IidConcatenatedTextDistribution[ParagraphDistribution]):
         super().__init__(*args, **kwargs)
         self.children: List[Self] = []
 
-    def generate_child(self, *args, **kwargs) -> Self:
-        result = super(TextDistribution, self).generate_child(*args, **kwargs)
+    def derivate(self, *args, **kwargs) -> Self:
+        result = super(TextDistribution, self).derivate(*args, **kwargs)
         self.children.append(result)
         return result
 
     def describe(self) -> str:
         return f'Paragraph Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
                f'Paragraph Distribution:{to_sub_description(self.text_distribution.describe())}' + \
-               ''.join([f'\nChild #{i}: {to_sub_description(self.children[i].describe())}'
+               ''.join([f'\nDerivated #{i}: {to_sub_description(self.children[i].describe())}'
                         for i in range(len(self.children))])
