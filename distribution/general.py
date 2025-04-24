@@ -111,7 +111,8 @@ class CategoricalDistribution(Distribution, Generic[CategoryType]):
         return self.states[index]
 
     def derivate(self, distance_scale: float) -> Self:
-        raise NotImplementedError()
+        # TODO Implement correct derivation
+        return CategoricalDistribution(states=self.states.copy(), probabilities=self.probabilities.copy())
 
     def describe(self) -> str:
         col_count = 10
