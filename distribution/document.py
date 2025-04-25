@@ -105,7 +105,11 @@ class SentenceDistribution(Distribution, Generic[PosType]):
         return ' '.join(word_sequence) + '.'
 
     def derivate(self, distance_scale: float) -> Self:
-        raise NotImplementedError()
+        return SentenceDistribution(
+            wordpos_dist_distribution=self.wordpos_dist_distribution.derivate(distance_scale=distance_scale),
+            pos_markov_dist=self.pos_markov_dist.derivate(distance_scale=distance_scale),
+            length_dist=self.length_dist.derivate(distance_scale=distance_scale)
+        )
 
     def describe(self) -> str:
         return f'Word Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
