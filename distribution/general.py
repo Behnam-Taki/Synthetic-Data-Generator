@@ -215,9 +215,9 @@ class PositiveGaussianMixtureDistribution(Distribution):
 
     @classmethod
     def get_random_distribution(cls,
-                                gaussians_count: int = 3,
-                                smallest_scale: int = 3,
-                                scale_factor: float = 2.5,
+                                gaussians_count: int = 2,
+                                smallest_scale: int = 1,
+                                scale_factor: float = 2,
                                 prior_dirichlet_params: List[float] = None,
                                 **kwargs) -> Self:
         prior_dirichlet_params = prior_dirichlet_params if prior_dirichlet_params else [1] * gaussians_count

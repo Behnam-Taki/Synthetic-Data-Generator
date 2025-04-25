@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
+from math import ceil
 from typing import Self, Dict, List, TypeVar, Generic, Set, Type, Tuple
 
 from utilities import to_sub_description
 from .base import Distribution
-from .general import MarkovDistribution, PoissonDistribution, CategoricalDistribution
+from .general import MarkovDistribution, PoissonDistribution, CategoricalDistribution, PositiveGaussianMixtureDistribution
 
 
 class WordDistribution(Distribution):
@@ -86,7 +87,7 @@ class SentenceDistribution(Distribution, Generic[PosType]):
     def __init__(self,
                  wordpos_dist_distribution: CategoricalDistribution[WordPosDistribution[PosType]],
                  pos_markov_dist: MarkovDistribution[PosType],
-                 length_dist: PoissonDistribution):
+                 length_dist: PositiveGaussianMixtureDistribution):
         self.wordpos_dist_distribution = wordpos_dist_distribution
         self.pos_markov_dist = pos_markov_dist
         self.length_dist = length_dist
@@ -97,10 +98,11 @@ class SentenceDistribution(Distribution, Generic[PosType]):
         return SentenceDistribution(
             wordpos_dist_distribution=CategoricalDistribution.get_random_distribution(states=wordpos_dists),
             pos_markov_dist=MarkovDistribution.get_random_distribution(states=pos_intersection + ['$']),
-            length_dist=PoissonDistribution.get_random_distribution())
+            length_dist=PositiveGaussianMixtureDistribution.get_random_distribution(
+                gaussians_count=3, smallest_scale=3, scale_factor=2.5, prior_dirichlet_params=[30, 60, 10]))
 
     def generate_sample(self, **kwargs) -> str:
-        pos_sequence = self.pos_markov_dist.generate_sample(lenght=self.length_dist.generate_sample() + 1)
+        pos_sequence = self.pos_markov_dist.generate_sample(lenght=ceil(self.length_dist.generate_sample() + 1))
         word_sequence = [self.wordpos_dist_distribution.generate_sample().generate_sample(pos) for pos in pos_sequence]
         return ' '.join(word_sequence) + '.'
 
