@@ -1,12 +1,19 @@
 import math
 import random
-from typing import List, Self, TypeVar, Generic
+from typing import List, Self, TypeVar, Generic, Any, Callable
 from tabulate import tabulate
 
 import numpy as np
 
 from utilities import to_sub_description, bin_search_on_answer
 from .base import Distribution
+
+
+def _reject_nonpositive(func: Callable, *args, **kwargs):
+    while True:
+        result = func(*args, **kwargs)
+        if result > 0:
+            return result
 
 
 class GaussianDistribution(Distribution):
@@ -18,7 +25,7 @@ class GaussianDistribution(Distribution):
     def get_random_distribution(cls, **kwargs) -> Self:
         return GaussianDistribution(
             mean=np.random.normal(loc=0, scale=1),
-            variance=np.random.normal(loc=2, scale=1)
+            variance=_reject_nonpositive(np.random.normal, loc=2, scale=1)
         )
 
     def generate_sample(self, **kwargs) -> float:
@@ -102,8 +109,9 @@ class CategoricalDistribution(Distribution, Generic[CategoryType]):
         self._cdf = self.probabilities.cumsum()
 
     @classmethod
-    def get_random_distribution(cls, states: List[CategoryType], **kwargs) -> Self:
-        return CategoricalDistribution(states, np.random.dirichlet(np.ones(len(states))))
+    def get_random_distribution(cls, states: List[CategoryType], prior_dirichlet_params=None, **kwargs) -> Self:
+        prior_dirichlet_params = prior_dirichlet_params if prior_dirichlet_params is not None else np.ones(len(states))
+        return CategoricalDistribution(states, np.random.dirichlet(prior_dirichlet_params))
 
     def generate_sample(self, **kwargs) -> CategoryType:
         r = np.random.uniform()
@@ -117,9 +125,10 @@ class CategoricalDistribution(Distribution, Generic[CategoryType]):
     def describe(self) -> str:
         col_count = 10
         states_tuples = [(self.states[i], self.probabilities[i]) for i in range(len(self.states))] \
-            if type(self.states[0]).__str__ is not object.__str__ else \
+            if type(self.states[0]).__str__ is not object.__str__ or \
+               type(self.states[0]) in {GaussianDistribution, PoissonDistribution} else \
             [(f'{type(self.states[0]).__name__} #{i + 1}', self.probabilities[i]) for i in range(len(self.states))]
-        states_tuples.sort(key=lambda x: len(x[0]))
+        states_tuples.sort(key=lambda x: len(str(x[0])))
         state_probs = [f'{state}: {prob:.3%}' for state, prob in states_tuples]
         line_count = math.ceil(len(state_probs) / col_count)
         state_probs_str = tabulate([[
@@ -193,3 +202,39 @@ class MarkovDistribution(Distribution, Generic[StateType]):
                               for i in range(len(self.states))],
                              headers=[''] + self.states, floatfmt='4.1f')
         return f'Markov{to_sub_description(trans_mat)}'
+
+
+class PositiveGaussianMixtureDistribution(Distribution):
+    def __init__(self, gaussian_dist_distribution: CategoricalDistribution[GaussianDistribution]):
+        self.gaussian_dist_distribution = gaussian_dist_distribution
+
+    @classmethod
+    def get_random_distribution(cls,
+                                gaussians_count: int = 3,
+                                smallest_scale: int = 3,
+                                scale_factor: float = 2.5,
+                                prior_dirichlet_params: List[float] = None,
+                                **kwargs) -> Self:
+        prior_dirichlet_params = prior_dirichlet_params if prior_dirichlet_params else [1] * gaussians_count
+        gaussians = []
+        for i in range(gaussians_count):
+            random_gaussian = GaussianDistribution.get_random_distribution()
+            random_gaussian.mean += smallest_scale * scale_factor ** i
+            gaussians.append(random_gaussian)
+        return PositiveGaussianMixtureDistribution(CategoricalDistribution.get_random_distribution(
+            states=gaussians,
+            prior_dirichlet_params=np.array(prior_dirichlet_params)
+        ))
+
+    def generate_sample(self, **kwargs) -> Any:
+        return _reject_nonpositive(self.gaussian_dist_distribution.generate_sample().generate_sample)
+
+    def derivate(self, distance_scale: float) -> Self:
+        new_gaussian_dists = \
+            [dist.derivate(distance_scale=distance_scale) for dist in self.gaussian_dist_distribution.states]
+        new_categorical_dist = self.gaussian_dist_distribution.derivate(distance_scale=distance_scale)
+        new_categorical_dist.states = new_gaussian_dists
+        return PositiveGaussianMixtureDistribution(gaussian_dist_distribution=new_categorical_dist)
+
+    def describe(self) -> str:
+        return self.gaussian_dist_distribution.describe()
