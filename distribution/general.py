@@ -180,7 +180,12 @@ class MarkovDistribution(Distribution, Generic[StateType]):
         return sample
 
     def derivate(self, distance_scale: float) -> Self:
-        raise NotImplementedError()
+        return MarkovDistribution(
+            states=self.states,
+            initial_distribution=self.initial_distribution.derivate(distance_scale=distance_scale),
+            transition_distributions=[dist.derivate(distance_scale=distance_scale) for dist in self.transition_distributions],
+            final_state_index=self.final_state_index
+        )
 
     def describe(self) -> str:
         trans_mat = tabulate([['-->'] + [100 * p for p in self.initial_distribution.probabilities]] +
