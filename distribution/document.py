@@ -144,7 +144,7 @@ class IidConcatenatedTextDistribution(Distribution, Generic[TextDistributionType
         return self.text_splitter.join(texts)
 
     def derivate(self, distance_scale: float) -> Self:
-        result = DocumentDistribution(
+        result = self.__class__(
             text_distribution=self.text_distribution.derivate(distance_scale=distance_scale),
             length_dist=self.text_distribution.derivate(distance_scale=distance_scale)
         )
@@ -166,15 +166,15 @@ class DocumentDistribution(IidConcatenatedTextDistribution[ParagraphDistribution
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.children: List[Self] = []
+        self.derivations: List[Self] = []
 
     def derivate(self, *args, **kwargs) -> Self:
         result = super(DocumentDistribution, self).derivate(*args, **kwargs)
-        self.children.append(result)
+        self.derivations.append(result)
         return result
 
     def describe(self) -> str:
         return f'Paragraph Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
                f'Paragraph Distribution:{to_sub_description(self.text_distribution.describe())}' + \
-               ''.join([f'\nDerivated #{i}: {to_sub_description(self.children[i].describe())}'
-                        for i in range(len(self.children))])
+               ''.join([f'\nDerivated #{i}: {to_sub_description(self.derivations[i].describe())}'
+                        for i in range(len(self.derivations))])
