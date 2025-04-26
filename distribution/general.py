@@ -9,10 +9,10 @@ from utilities import to_sub_description, bin_search_on_answer
 from .base import Distribution
 
 
-def _reject_nonpositive(func: Callable, *args, **kwargs):
+def _reject_nonpositive(func: Callable, value_to_check: Callable = lambda x: x, *args, **kwargs):
     while True:
         result = func(*args, **kwargs)
-        if result > 0:
+        if value_to_check(result) > 0:
             return result
 
 
@@ -236,7 +236,8 @@ class PositiveGaussianMixtureDistribution(Distribution):
 
     def derivate(self, distance_scale: float) -> Self:
         new_gaussian_dists = \
-            [dist.derivate(distance_scale=distance_scale) for dist in self.gaussian_dist_distribution.states]
+            [_reject_nonpositive(dist.derivate, lambda d: d.mean, distance_scale= distance_scale)
+             for dist in self.gaussian_dist_distribution.states]
         new_categorical_dist = self.gaussian_dist_distribution.derivate(distance_scale=distance_scale)
         new_categorical_dist.states = new_gaussian_dists
         return PositiveGaussianMixtureDistribution(gaussian_dist_distribution=new_categorical_dist)
