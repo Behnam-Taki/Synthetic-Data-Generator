@@ -1,5 +1,6 @@
 from __future__ import annotations
 import pickle
+from queue import Queue
 from typing import List, Self
 
 from distribution.document import WordPosDistribution, DocumentDistribution
@@ -17,6 +18,21 @@ class SyntheticGeneratorModel:
             for _ in range(self.pos_word_dist_count)
         ]
         self.root_document_distribution = DocumentDistribution.get_random_distribution(wordpos_dists=self.wordpos_dists)
+
+    def derivate(self, max_derivation_level: int, branching_factor: int = 2,
+                 initial_distance_scale: float = 2, decay_factor: float = 3):
+        current_queue = Queue()
+        current_queue.put(self.root_document_distribution)
+        current_distance_scale = initial_distance_scale
+        for level in range(max_derivation_level):
+            new_queue = Queue()
+            while not current_queue.empty():
+                dist: DocumentDistribution = current_queue.get()
+                for i in range(branching_factor):
+                    derivated = dist.derivate(current_distance_scale)
+                    new_queue.put(derivated)
+            current_queue = new_queue
+            current_distance_scale /= decay_factor
 
     def describe(self) -> str:
         wordpos_dists = '\n'.join([
