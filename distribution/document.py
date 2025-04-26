@@ -148,7 +148,7 @@ class IidConcatenatedTextDistribution(Distribution, Generic[TextDistributionType
     def derivate(self, distance_scale: float) -> Self:
         result = self.__class__(
             text_distribution=self.text_distribution.derivate(distance_scale=distance_scale),
-            length_dist=self.text_distribution.derivate(distance_scale=distance_scale)
+            length_dist=self.length_dist.derivate(distance_scale=distance_scale)
         )
         return result
 
