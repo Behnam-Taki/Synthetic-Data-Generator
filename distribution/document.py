@@ -168,15 +168,19 @@ class DocumentDistribution(IidConcatenatedTextDistribution[ParagraphDistribution
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.name = 'root'
         self.derivations: List[Self] = []
 
     def derivate(self, *args, **kwargs) -> Self:
         result = super(DocumentDistribution, self).derivate(*args, **kwargs)
+        result.name = f'{self.name}.#{len(self.derivations)+1}'
         self.derivations.append(result)
         return result
 
     def describe(self) -> str:
-        return f'Paragraph Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
-               f'Paragraph Distribution:{to_sub_description(self.text_distribution.describe())}' + \
-               ''.join([f'\nDerivated #{i}: {to_sub_description(self.derivations[i].describe())}'
-                        for i in range(len(self.derivations))])
+        return f'Document dist {self.name}:' + to_sub_description(
+            f'Paragraph Count Distribution:{to_sub_description(self.length_dist.describe())}\n' \
+            f'Paragraph Distribution:{to_sub_description(self.text_distribution.describe())}\n' + \
+            ''.join([f'{self.derivations[i].describe()}'
+                     for i in range(len(self.derivations))])
+        )

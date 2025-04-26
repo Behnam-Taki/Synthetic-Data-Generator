@@ -23,7 +23,8 @@ class SyntheticGeneratorModel:
             f'{type(self.wordpos_dists[i]).__name__} #{i + 1}: {to_sub_description(self.wordpos_dists[i].describe())}'
             for i in range(len(self.wordpos_dists))])
         return f'Word-Pos Distributions:{to_sub_description(wordpos_dists)}\n' \
-               f'Root Document Distribution:{to_sub_description(self.root_document_distribution.describe())}'
+               f'{"━" * 80}\n' \
+               f'{self.root_document_distribution.describe()}'
 
     def save(self, path: str = default_file_name):
         with open(path, 'wb') as f:
