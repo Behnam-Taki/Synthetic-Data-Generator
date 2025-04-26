@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from math import ceil
 from typing import Self, Dict, List, TypeVar, Generic, Set, Type, Tuple
@@ -170,6 +171,24 @@ class DocumentDistribution(IidConcatenatedTextDistribution[ParagraphDistribution
         super().__init__(*args, **kwargs)
         self.name = 'root'
         self.derivations: List[Self] = []
+
+    def generate_sample(self, dist_id: str, **kwargs) -> str:
+        if dist_id == self.name:
+            if self.derivations:
+                raise ValueError(f'Document distribution {self.name} is not leaf'
+                                 f' and has {len(self.derivations)} derivations')
+            else:
+                return super().generate_sample(**kwargs)
+        else:
+            match = re.match(f'^{re.escape(self.name)}.#(\\d+).*', dist_id)
+            if match:
+                dist_number = int(match.group(1))
+                if dist_number > len(self.derivations):
+                    raise ValueError(f'Document distribution {self.name} does not have derivation #{dist_number}')
+                else:
+                    return self.derivations[dist_number - 1].generate_sample(dist_id=dist_id)
+            else:
+                raise ValueError(f'Document distribution id {dist_id} is not valid')
 
     def derivate(self, *args, **kwargs) -> Self:
         result = super(DocumentDistribution, self).derivate(*args, **kwargs)
