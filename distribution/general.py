@@ -123,8 +123,38 @@ class CategoricalDistribution(Distribution, Generic[CategoryType]):
         return self.states[index]
 
     def derivate(self, distance_scale: float) -> Self:
-        # TODO Implement correct derivation
-        return CategoricalDistribution(states=self.states.copy(), probabilities=self.probabilities.copy())
+        if distance_scale == 0:
+            return CategoricalDistribution(states=self.states.copy(), probabilities=self.probabilities.copy())
+        kl = distance_scale * 0.3
+        n = len(self.states)
+        ps = self.probabilities
+        entropy = - sum(pi * math.log(pi) for pi in ps)
+        c = kl + entropy
+        delta = 0.3
+        epsilon = 1e-6
+        while True:
+            non_normalized_qs = [random.uniform(0, 1) for _ in range(n-1)]
+            normalization_factor = (1 - 1 / n) / sum(non_normalized_qs)
+            qs = [q * normalization_factor for q in non_normalized_qs]
+            ts = [- ps[i] * math.log(qs[i]) for i in range(len(qs))]
+            tn = c - sum(ts)
+            if tn < 0:
+                continue
+            qn = math.exp(- tn / ps[-1])
+            if abs(sum(qs) + qn - 1) > delta:
+                continue
+            while True:
+                qn = math.exp(-(c + sum(ps[i] * math.log(qs[i]) for i in range(len(qs)))) / ps[-1])
+                f = sum(qs) + qn - 1
+                if -epsilon <= f <= epsilon:
+                    new_qs = np.array(qs + [qn])
+                    new_qs = new_qs / np.sum(new_qs)
+                    return CategoricalDistribution(states=self.states.copy(), probabilities=new_qs)
+                grads = [1 - (qn * ps[j]) / (ps[-1] * qs[j]) for j in range(len(qs))]
+                grads_norm = sum(grad ** 2 for grad in grads)
+                qs = [qs[i] - f * grads[i] / grads_norm for i in range(len(qs))]
+                if any(x <= 0 for x in qs):
+                    break
 
     def describe(self) -> str:
         col_count = 10
