@@ -89,14 +89,15 @@ class PoissonDistribution(Distribution):
         return np.random.poisson(lam=self.lam)
 
     def derivate(self, distance_scale: float) -> Self:
+        kl = 1 * distance_scale
         distance_calculator = lambda lam: lam - self.lam + self.lam * math.log(self.lam / lam)
         first_range_start, sec_range_end = self.lam, self.lam
-        while distance_calculator(first_range_start) < distance_scale:
+        while distance_calculator(first_range_start) < kl:
             first_range_start /= 2
-        while distance_calculator(sec_range_end) < distance_scale:
+        while distance_calculator(sec_range_end) < kl:
             sec_range_end *= 2
-        start = bin_search_on_answer(distance_calculator, distance_scale, first_range_start, self.lam)
-        end = bin_search_on_answer(distance_calculator, distance_scale, self.lam, sec_range_end)
+        start = bin_search_on_answer(distance_calculator, kl, first_range_start, self.lam)
+        end = bin_search_on_answer(distance_calculator, kl, self.lam, sec_range_end)
         lam = random.choice([start, end])
         return PoissonDistribution(lam)
 
