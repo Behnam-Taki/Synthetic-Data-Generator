@@ -32,15 +32,16 @@ class GaussianDistribution(Distribution):
         return np.random.normal(loc=self.mean, scale=math.sqrt(self.variance))
 
     def derivate(self, distance_scale: float) -> Self:
-        if distance_scale == 0:
+        kl = 0.5 * distance_scale
+        if kl == 0:
             return GaussianDistribution(self.mean, self.variance)
         distance_with_same_mean_calculator = lambda var_ratio: 0.5 * math.log(var_ratio) + 0.5 / var_ratio - 0.5
 
         max_var_ratio_range_end = 1
-        while distance_with_same_mean_calculator(max_var_ratio_range_end) < distance_scale:
+        while distance_with_same_mean_calculator(max_var_ratio_range_end) < kl:
             max_var_ratio_range_end *= 2
         max_var_ratio_range_start = max_var_ratio_range_end / 2
-        max_var_ratio = bin_search_on_answer(distance_with_same_mean_calculator, distance_scale,
+        max_var_ratio = bin_search_on_answer(distance_with_same_mean_calculator, kl,
                                              max_var_ratio_range_start, max_var_ratio_range_end)
         max_var = max_var_ratio * self.variance
 
@@ -53,7 +54,7 @@ class GaussianDistribution(Distribution):
 
         min_var = 0
         mu_calculator = lambda var: self.mean + math.sqrt(
-            2 * var * (distance_scale + 0.5 - 0.5 * math.log(var / self.variance) - 0.5 * self.variance / var))
+            2 * var * (kl + 0.5 - 0.5 * math.log(var / self.variance) - 0.5 * self.variance / var))
         parts_num = 1000
         epsilon = (max_var - min_var) / 1000
         part_lenghts: np.ndarray = np.zeros(parts_num)
