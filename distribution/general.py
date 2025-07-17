@@ -132,28 +132,44 @@ class CategoricalDistribution(Distribution, Generic[CategoryType]):
         ps = self.probabilities
         entropy = - sum(pi * math.log(pi) for pi in ps)
         c = kl + entropy
-        delta = 0.3
+        delta = 0.9
         epsilon = 1e-6
+        min_p = 0.01
         while True:
             non_normalized_qs = [random.uniform(0, 1) for _ in range(n-1)]
-            normalization_factor = (1 - 1 / n) / sum(non_normalized_qs)
+            normalization_factor = (1 - ps[-1]) / sum(non_normalized_qs)
             qs = [q * normalization_factor for q in non_normalized_qs]
             ts = [- ps[i] * math.log(qs[i]) for i in range(len(qs))]
             tn = c - sum(ts)
             if tn < 0:
                 continue
             qn = math.exp(- tn / ps[-1])
+            if qn < min_p:
+                continue
             if abs(sum(qs) + qn - 1) > delta:
                 continue
+            # noinspection PyTypeChecker
+            function_index = int(np.argmax(qs + [qn]))
+            if function_index < n - 1:
+                qn, qs[function_index] = qs[function_index], qn
+                ps[-1], ps[function_index] = ps[function_index], ps[-1]
             while True:
                 qn = math.exp(-(c + sum(ps[i] * math.log(qs[i]) for i in range(len(qs)))) / ps[-1])
                 f = sum(qs) + qn - 1
                 if -epsilon <= f <= epsilon:
+                    if function_index < n-1:
+                        qn, qs[function_index] = qs[function_index], qn
+                        ps[-1], ps[function_index] = ps[function_index], ps[-1]
                     new_qs = np.array(qs + [qn])
                     new_qs = new_qs / np.sum(new_qs)
                     return CategoricalDistribution(states=self.states.copy(), probabilities=new_qs)
                 grads = [1 - (qn * ps[j]) / (ps[-1] * qs[j]) for j in range(len(qs))]
-                grads_norm = sum(grad ** 2 for grad in grads)
+                for i in range(len(qs)):
+                    if qs[i] <= min_p and f * grads[i] > 0:
+                        grads[i] = 0
+                grads_norm = np.sum(np.square(grads))
+                if grads_norm == 0:
+                    break
                 qs = [qs[i] - f * grads[i] / grads_norm for i in range(len(qs))]
                 if any(x <= 0 for x in qs):
                     break
