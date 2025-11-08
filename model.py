@@ -20,7 +20,7 @@ class SyntheticGeneratorModel:
         self.root_document_distribution = DocumentDistribution.get_random_distribution(wordpos_dists=self.wordpos_dists)
 
     def derivate(self, max_derivation_level: int, branching_factor: int = 2,
-                 initial_distance_scale: float = 2, decay_factor: float = 3):
+                 initial_distance_scale: float = 2, decay_factor: float = 5):
         current_queue = Queue()
         current_queue.put(self.root_document_distribution)
         current_distance_scale = initial_distance_scale

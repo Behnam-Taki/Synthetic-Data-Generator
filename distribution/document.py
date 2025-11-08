@@ -108,6 +108,8 @@ class SentenceDistribution(Distribution, Generic[PosType]):
         return ' '.join(word_sequence) + '.'
 
     def derivate(self, distance_scale: float) -> Self:
+        print("[DEBUG] SentenceDistribution.derivate called")
+        print(f"[DEBUG] self.wordpos_dist_distribution = {self.wordpos_dist_distribution}")
         return SentenceDistribution(
             wordpos_dist_distribution=self.wordpos_dist_distribution.derivate(distance_scale=distance_scale),
             pos_markov_dist=self.pos_markov_dist.derivate(distance_scale=distance_scale),
