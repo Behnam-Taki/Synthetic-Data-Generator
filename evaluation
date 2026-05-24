@@ -1,0 +1,261 @@
+import pandas as pd
+import numpy as np
+import random
+from typing import List, Tuple, Dict, Optional
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import accuracy_score, f1_score
+from sentence_transformers import SentenceTransformer
+import warnings
+import os
+import json
+from datetime import datetime
+
+warnings.filterwarnings("ignore")
+
+
+class MLPerformer:
+    @staticmethod
+    def train_and_evaluate(train_texts: List[str], train_labels: List[int],
+                           test_texts: List[str], test_labels: List[int],
+                           use_embeddings: bool = False,
+                           embed_model: Optional[SentenceTransformer] = None) -> Dict[str, float]:
+        """Train classifier and return accuracy/f1/error."""
+        if use_embeddings:
+            if embed_model is None:
+                embed_model = SentenceTransformer('all-MiniLM-L6-v2')
+            X_train = embed_model.encode(train_texts, convert_to_numpy=True)
+            X_test = embed_model.encode(test_texts, convert_to_numpy=True)
+        else:
+            vectorizer = TfidfVectorizer(max_features=5000)
+            X_train = vectorizer.fit_transform(train_texts).toarray()
+            X_test = vectorizer.transform(test_texts).toarray()
+
+        clf = GradientBoostingClassifier(n_estimators=300, random_state=42)
+        clf.fit(X_train, train_labels)
+        preds = clf.predict(X_test)
+
+        acc = accuracy_score(test_labels, preds)
+        f1 = f1_score(test_labels, preds, average='weighted')
+        err = 1.0 - acc
+
+        return {'accuracy': acc, 'f1_score': f1, 'error': err}
+
+
+class HierarchicalEvaluator:
+    def __init__(self,
+                 train_csv: str,
+                 test_csv: str,
+                 use_embeddings: bool = False,
+                 n_train_per_class: int = 10,
+                 n_test_per_class: int = 10,
+                 n_pairs_per_level: int = 30,
+                 random_state: int = 42):
+        self.train_df = pd.read_csv(train_csv)
+        self.test_df = pd.read_csv(test_csv)
+        self.use_embeddings = use_embeddings
+        self.n_train_per_class = n_train_per_class
+        self.n_test_per_class = n_test_per_class
+        self.n_pairs_per_level = n_pairs_per_level
+        self.random_state = random_state
+        random.seed(random_state)
+        np.random.seed(random_state)
+
+        rename_map = {
+            'x_Text': 'x_text',
+            'y_Cat1': 'y_l1',
+            'y_Cat2': 'y_l2',
+            'y_Cat3': 'y_l3'
+        }
+        self.train_df.rename(columns=rename_map, inplace=True)
+        self.test_df.rename(columns=rename_map, inplace=True)
+
+        for col in ['x_text', 'y_l1', 'y_l2', 'y_l3']:
+            if col not in self.train_df.columns or col not in self.test_df.columns:
+                raise ValueError(f"Missing required column '{col}' in train/test CSVs.")
+
+        self.embed_model = None
+        if self.use_embeddings:
+            os.environ["TOKENIZERS_PARALLELISM"] = "false"
+            self.embed_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+    # ---------- Label pair sampling ----------
+
+    def _sample_label_pair_level0(self, df: pd.DataFrame) -> List[Tuple[str, str]]:
+        """Level 0: same exact leaf (y_l3 identical)"""
+        labels = df['y_l3'].unique().tolist()
+        random.shuffle(labels)
+        pairs = [(lbl, lbl) for lbl in labels[:self.n_pairs_per_level]]
+        return pairs
+
+    def _sample_label_pair_level1(self, df: pd.DataFrame) -> List[Tuple[str, str]]:
+        """Level 1: same parent (y_l2)"""
+        pairs = []
+        all_indices = df.index.tolist()
+        random.shuffle(all_indices)
+
+        while len(pairs) < self.n_pairs_per_level:
+            idx_a = random.choice(all_indices)
+            y_l2_val = df.loc[idx_a, 'y_l2']
+            candidates = df[df['y_l2'] == y_l2_val].index.tolist()
+            if len(candidates) < 2:
+                continue
+            idx_b = random.choice([i for i in candidates if i != idx_a])
+            lab_a = df.loc[idx_a, 'y_l3']
+            lab_b = df.loc[idx_b, 'y_l3']
+            pairs.append((lab_a, lab_b))
+        return pairs
+
+    def _sample_label_pair_level2(self, df: pd.DataFrame) -> List[Tuple[str, str]]:
+        """Level 2: same grandparent (y_l1)"""
+        pairs = []
+        all_indices = df.index.tolist()
+        random.shuffle(all_indices)
+
+        while len(pairs) < self.n_pairs_per_level:
+            idx_a = random.choice(all_indices)
+            y_l1_val = df.loc[idx_a, 'y_l1']
+            candidates = df[df['y_l1'] == y_l1_val].index.tolist()
+            if len(candidates) < 2:
+                continue
+            idx_b = random.choice([i for i in candidates if i != idx_a])
+            lab_a = df.loc[idx_a, 'y_l3']
+            lab_b = df.loc[idx_b, 'y_l3']
+            pairs.append((lab_a, lab_b))
+        return pairs
+
+    def _get_label_pairs_for_level(self, level: int) -> List[Tuple[str, str]]:
+        if level == 0:
+            return self._sample_label_pair_level0(self.train_df)
+        elif level == 1:
+            return self._sample_label_pair_level1(self.train_df)
+        elif level == 2:
+            return self._sample_label_pair_level2(self.train_df)
+        else:
+            raise ValueError("level must be 0, 1, or 2")
+    # ---------- Sampling examples ----------
+
+    def _sample_examples_for_label(self, df: pd.DataFrame, label: str, n: int, label_col: str = 'y_l3') -> List[int]:
+        subset = df[df[label_col] == label]
+        if len(subset) == 0:
+            return []
+        n = min(n, len(subset))
+        return subset.sample(n, random_state=random.randint(0, 10 ** 9)).index.tolist()
+
+    # ---------- Evaluation ----------
+
+    def evaluate_level(self, level: int) -> Dict[str, float]:
+        label_pairs = self._get_label_pairs_for_level(level)
+        accs, f1s, errs = [], [], []
+
+        print(f"\n=== Evaluating LCA Level {level} ===")
+        pair_counter = 0
+
+        for lab_a, lab_b in label_pairs:
+            train_idx_a = self._sample_examples_for_label(self.train_df, lab_a, self.n_train_per_class)
+            train_idx_b = self._sample_examples_for_label(self.train_df, lab_b, self.n_train_per_class)
+            test_idx_a = self._sample_examples_for_label(self.test_df, lab_a, self.n_test_per_class)
+            test_idx_b = self._sample_examples_for_label(self.test_df, lab_b, self.n_test_per_class)
+
+            if not train_idx_a or not train_idx_b or not test_idx_a or not test_idx_b:
+                continue
+
+            pair_counter += 1
+
+            info_a = self.train_df.loc[train_idx_a[0], ['y_l1', 'y_l2', 'y_l3']].to_dict()
+            info_b = self.train_df.loc[train_idx_b[0], ['y_l1', 'y_l2', 'y_l3']].to_dict()
+
+            print(f"--- Pair {pair_counter} ---")
+            print(f"Labels: A='{lab_a}' (y_l1={info_a['y_l1']}, y_l2={info_a['y_l2']})  "
+                  f"vs B='{lab_b}' (y_l1={info_b['y_l1']}, y_l2={info_b['y_l2']})")
+            print(
+                f"Train idx counts: {len(train_idx_a)} vs {len(train_idx_b)}; Test idx counts: {len(test_idx_a)} vs {len(test_idx_b)}")
+            print(f"Train idx samples (first 5): {train_idx_a[:5]} vs {train_idx_b[:5]}")
+            print(f"Test idx samples (first 5): {test_idx_a[:5]} vs {test_idx_b[:5]}")
+
+            train_texts = self.train_df.loc[train_idx_a, 'x_text'].tolist() + self.train_df.loc[
+                train_idx_b, 'x_text'].tolist()
+            train_labels = [0] * len(train_idx_a) + [1] * len(train_idx_b)
+            test_texts = self.test_df.loc[test_idx_a, 'x_text'].tolist() + self.test_df.loc[
+                test_idx_b, 'x_text'].tolist()
+            test_labels = [0] * len(test_idx_a) + [1] * len(test_idx_b)
+
+            metrics = MLPerformer.train_and_evaluate(
+                train_texts, train_labels, test_texts, test_labels,
+                use_embeddings=self.use_embeddings, embed_model=self.embed_model
+            )
+
+            print(
+                f"Pair metrics: accuracy={metrics['accuracy']:.4f}, f1={metrics['f1_score']:.4f}, err={metrics['error']:.4f}\n")
+
+            accs.append(metrics['accuracy'])
+            f1s.append(metrics['f1_score'])
+            errs.append(metrics['error'])
+
+            if pair_counter >= self.n_pairs_per_level:
+                break
+
+        if not accs:
+            print("No valid pairs found for this level.")
+            return {'mean_accuracy': np.nan, 'mean_f1_score': np.nan, 'mean_error': np.nan}
+
+        return {
+            'mean_accuracy': float(np.mean(accs)),
+            'mean_f1_score': float(np.mean(f1s)),
+            'mean_error': float(np.mean(errs)),
+            'std_accuracy': float(np.std(accs)),
+            'std_f1_score': float(np.std(f1s)),
+            'std_error': float(np.std(errs))
+        }
+
+    def evaluate_all_levels(self) -> Dict[int, Dict[str, float]]:
+        results = {}
+        for lvl in [0, 1, 2]:
+            results[lvl] = self.evaluate_level(lvl)
+        return results
+
+    def save_results(self, results: Dict[int, Dict[str, float]], output_dir: str = "results"):
+        """Save evaluation results to JSON file"""
+        os.makedirs(output_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"hierarchical_eval_{timestamp}.json"
+        filepath = os.path.join(output_dir, filename)
+
+        with open(filepath, 'w') as f:
+            json.dump(results, f, indent=4)
+
+        print(f"\nResults saved to: {filepath}")
+        return filepath
+
+
+if __name__ == "__main__":
+    # === CONFIG ===
+    train_csv = "datasets/Amazon_reviews/amazon_reviews_train.csv"
+    test_csv = "datasets/Amazon_reviews/amazon_reviews_val.csv"
+    use_embeddings = True
+    n_train_per_class = 40
+    n_test_per_class = 30
+    n_pairs_per_level = 70
+    random_state = 42
+
+    evaluator = HierarchicalEvaluator(
+        train_csv, test_csv,
+        use_embeddings=use_embeddings,
+        n_train_per_class=n_train_per_class,
+        n_test_per_class=n_test_per_class,
+        n_pairs_per_level=n_pairs_per_level,
+        random_state=random_state
+    )
+
+    results = evaluator.evaluate_all_levels()
+
+    print("\n" + "=" * 80)
+    print("=== FINAL HIERARCHICAL EVALUATION RESULTS ===")
+    print("=" * 80)
+    for lvl, metrics in results.items():
+        print(f"\nLCA Level {lvl}:")
+        for metric_name, value in metrics.items():
+            print(f"  {metric_name}: {value:.4f}")
+
+    # Save results
+    evaluator.save_results(results)
